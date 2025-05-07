@@ -8,9 +8,14 @@ import (
 	"net/url"
 )
 
+type SimpleCarouselllll interface {
+	Set(url string, info any)
+	Next() any
+}
+
 type roundRobin struct {
-	backendsCarousel *backendsCarousel
-	logger           *slog.Logger
+	newBackendsCarousel SimpleCarouselllll
+	logger              *slog.Logger
 }
 
 type Config struct {
@@ -20,7 +25,7 @@ type Config struct {
 
 func New(cfg Config) (http.Handler, error) {
 	rr := &roundRobin{
-		backendsCarousel: newBackendsCarousel(),
+		newBackendsCarousel: NewCarousel(),
 	}
 
 	var errs []error
@@ -30,21 +35,21 @@ func New(cfg Config) (http.Handler, error) {
 			errs = append(errs, err)
 			continue
 		}
-		proxy := httputil.NewSingleHostReverseProxy(backendUrlParsed) // TODO inject logger in proxy
+		proxy := httputil.NewSingleHostReverseProxy(backendUrlParsed) // TODO inject logger and error handler in proxy
 
-		err = rr.backendsCarousel.addNew(StrUrl(backendUrl), proxy)
-		if err != nil {
-			errs = append(errs, err)
-		}
-
+		rr.newBackendsCarousel.Set(backendUrl, proxy)
+	}
+	if len(cfg.BackendUrls) == 0 {
+		errs = append(errs, errors.New("empty backends list"))
 	}
 	return rr, errors.Join(errs...)
 }
 
-func (lb *roundRobin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	handler := lb.backendsCarousel.nextHandler()
+func (rr *roundRobin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// TODO handle error proxy when server on another port
+	handler := rr.newBackendsCarousel.Next().(http.Handler)
 	if handler == nil {
-		lb.logger.Error("no one alive backend")
+		rr.logger.Error("no one alive backend")
 		http.Error(w, "Service unavailable", http.StatusServiceUnavailable) // TODO not json?
 		return
 	}
