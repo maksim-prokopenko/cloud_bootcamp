@@ -9,11 +9,11 @@
 export BACKEND_URLS="http://localhost:8081,http://localhost:8082,http://localhost:8083"
 export CLIENT_LIMITS="vasya=60,petya=1.5" 
 ```
-Поднимет балансировщик с лимитером.
+Поднимет балансировщик с лимитером и 3 заглушками понгерами.
 ```shell
 docker compose up
 ```
-
+Чек
 ```shell
 curl -H "ft-token: petya" localhost:8080
 ```
