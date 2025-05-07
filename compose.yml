@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  ponger_1:
+    build:
+      context: ./cmd/balancer/testhelpers/dummyservice/ponger
+      dockerfile: Dockerfile
+
+  ponger_2:
+    build:
+      context: ./cmd/balancer/testhelpers/dummyservice/ponger
+      dockerfile: Dockerfile
+
+  ponger_3:
+    build:
+      context: ./cmd/balancer/testhelpers/dummyservice/ponger
+      dockerfile: Dockerfile
+
+  balancer:
+    build:
+      context: .
+      dockerfile: ./cmd/balancer/Dockerfile
+    environment:
+      - BACKEND_URLS="http://ponger_1,http://ponger_2,http://ponger_3"
+      - CLIENT_LIMITS="vasya=60,petya=1.5"
+    ports:
+      - "8080:8080"
