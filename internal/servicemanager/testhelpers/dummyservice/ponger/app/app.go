@@ -1,23 +1,12 @@
-package main
+package app
 
 import (
 	"fmt"
-	"github.com/Pallinder/sillyname-go"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 )
-
-func main() {
-
-	cfg := Config{
-		ServerId: os.Getenv("SERVER_ID"),
-		Port:     os.Getenv("SERVER_PORT"),
-	}
-
-	Run(cfg)
-}
 
 type Config struct {
 	ServerId string
@@ -25,29 +14,48 @@ type Config struct {
 	Logger   *slog.Logger
 }
 
-func Run(cfg Config) {
+func Run(cfg Config) (string, error) {
 
 	cfg = cfg.WithDefaults()
 
 	logger := cfg.Logger.With(
 		slog.String("server id", cfg.ServerId))
 
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	logger.Info("config",
+		slog.Any("config", cfg))
+
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		logger.Info(fmt.Sprintf("request from %s", r.RemoteAddr))
 		w.WriteHeader(200)
 		_, _ = fmt.Fprint(w, "pong")
 	})
 
-	err := http.ListenAndServe(net.JoinHostPort("", cfg.Port), nil)
+	server := &http.Server{
+		Addr:    net.JoinHostPort("0.0.0.0", cfg.Port),
+		Handler: mux,
+	}
+
+	ln, err := net.Listen("tcp", server.Addr)
 	if err != nil {
 		logger.Error(err.Error())
+		return "", err
 	}
+
+	go func() {
+		logger.Error(server.Serve(ln).Error())
+		defer ln.Close()
+	}()
+
+	return ln.Addr().String(), err
+
 }
 
 func (c Config) WithDefaults() Config {
 
 	if len(c.ServerId) == 0 {
-		c.ServerId = sillyname.GenerateStupidName()
+		c.ServerId = GenerateStupidName()
 	}
 
 	if len(c.Port) == 0 {

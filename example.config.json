@@ -1,0 +1,12 @@
+{
+  "services": {
+    "ponger_service": {
+      "server_name": "http://localhost:8080",
+      "algorithm": "round_robin",
+      "servers": [
+        { "url": "http://localhost:8081" },
+        { "url": "http://localhost:8082" }
+      ]
+    }
+  }
+}

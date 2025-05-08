@@ -1,4 +1,4 @@
-package roundrobin
+package weighted
 
 import (
 	"errors"
@@ -11,13 +11,13 @@ import (
 	"github.com/maximmihin/cb625/internal/balancer/healthcheck"
 )
 
-type SimpleCarousel interface {
-	Set(url string, info any)
+type WeightedCarousel interface {
+	SetWithWeight(url string, info any, weight int)
 	Next() any
 }
 
 type roundRobin struct {
-	backendsCarousel SimpleCarousel
+	backendsCarousel WeightedCarousel
 	logger           *slog.Logger
 }
 
@@ -25,11 +25,12 @@ type Config struct {
 	ServerName        string                               `json:"server_name"`
 	BackendUrls       []ServerConfig                       `json:"servers"`
 	ActiveHealthCheck *healthcheck.ActiveHealthCheckConfig `json:"active_health_check"`
-	Logger            *slog.Logger
+	Logger            *slog.Logger                         `json:"_"` // TODO check is it work
 }
 
 type ServerConfig struct {
-	URL string `json:"url"`
+	URL    string `json:"url"`
+	Weight int    `json:"weight,omitempty"`
 }
 
 func New(cfg Config) (http.Handler, error) {
@@ -42,7 +43,7 @@ func New(cfg Config) (http.Handler, error) {
 	} else {
 		srr := carousel.NewSmart()
 		rr.backendsCarousel = srr
-		defer func() { // TODO ugly
+		defer func() { // TODO ugly but how?..
 			if err == nil {
 				healthcheck.RunActiveHealthCheck(cfg.ActiveHealthCheck, srr)
 			}
@@ -58,7 +59,7 @@ func New(cfg Config) (http.Handler, error) {
 		}
 		proxy := httputil.NewSingleHostReverseProxy(backendUrlParsed) // TODO inject logger and error handler in proxy
 
-		rr.backendsCarousel.Set(backendUrl.URL, proxy)
+		rr.backendsCarousel.SetWithWeight(backendUrl.URL, proxy, backendUrl.Weight)
 	}
 	if len(cfg.BackendUrls) == 0 {
 		errs = append(errs, errors.New("empty backends list"))

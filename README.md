@@ -1,13 +1,24 @@
 # Summary
-Реализован round robin. Готов только обычный, но проведен рефакторинг под weighted round robin.
-Реализован token bucket.
+Реализовано:
+- round robin и weighted round robin.
+- token bucket.
 
 # Запуск
-Конфигурируется через переменные окружения. Пример:
-Для `petya` задан рейтлимит на 1.5 токена в секунду, для `vasya` 60.
-```shell
-export BACKEND_URLS="http://localhost:8081,http://localhost:8082,http://localhost:8083"
-export CLIENT_LIMITS="vasya=60,petya=1.5" 
+Конфигурируется через json конфиг. Пример:
+```json
+{
+  "services": {
+    "ponger_service": {
+      "server_name": "http://localhost:8080",
+      "algorithm": "weighted_round_robin",
+      "servers": [
+        { "url": "http://ponger_1:8080", "weight": 1 },
+        { "url": "http://ponger_2:8080", "weight": 2 },
+        { "url": "http://ponger_3:8080", "weight": 3 }
+      ]
+    }
+  }
+}
 ```
 Поднимет балансировщик с лимитером и 3 заглушками понгерами.
 ```shell
@@ -15,5 +26,5 @@ docker compose up
 ```
 Чек
 ```shell
-curl -H "ft-token: petya" localhost:8080
+curl localhost:8080
 ```
