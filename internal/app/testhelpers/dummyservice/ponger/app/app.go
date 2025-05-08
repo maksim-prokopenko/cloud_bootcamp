@@ -29,7 +29,7 @@ func Run(cfg Config) (string, error) {
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		logger.Info(fmt.Sprintf("request from %s", r.RemoteAddr))
 		w.WriteHeader(200)
-		_, _ = fmt.Fprint(w, "pong")
+		_, _ = fmt.Fprint(w, "pong from "+cfg.ServerId)
 	})
 
 	server := &http.Server{

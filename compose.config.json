@@ -1,13 +1,23 @@
 {
-  "services": {
-    "ponger_service": {
-      "server_name": "http://localhost:8080",
-      "algorithm": "weighted_round_robin",
-      "servers": [
-        { "url": "http://ponger_1:8080", "weight": 1 },
-        { "url": "http://ponger_2:8080", "weight": 2 },
-        { "url": "http://ponger_3:8080", "weight": 3 }
-      ]
-    }
+  "balancer": {
+    "type": "round_robin",
+    "servers": [
+      { "url": "http://ponger_1:8080", "weight": 1 },
+      { "url": "http://ponger_2:8080", "weight": 2 },
+      { "url": "http://ponger_3:8080", "weight": 3 }
+    ]
+  },
+  "limiter": {
+    "type": "token_buket",
+    "users": [
+      { "token": "vasya", "limit":  1.5 },
+      { "token": "petya", "limit":  10 }
+    ]
+  },
+  "active_health_check": {
+    "handler": "/ping",
+    "method": "GET",
+    "interval": 10,
+    "timeout": 100
   }
 }

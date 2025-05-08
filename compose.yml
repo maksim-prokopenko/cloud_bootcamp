@@ -4,7 +4,7 @@ services:
   ponger_1:
     build:
       context: .
-      dockerfile: ./internal/servicemanager/testhelpers/dummyservice/ponger/Dockerfile
+      dockerfile: ./internal/app/testhelpers/dummyservice/ponger/Dockerfile
     environment:
       - SERVER_PORT=8080
     ports:
@@ -13,7 +13,7 @@ services:
   ponger_2:
     build:
       context: .
-      dockerfile: ./internal/servicemanager/testhelpers/dummyservice/ponger/Dockerfile
+      dockerfile: ./internal/app/testhelpers/dummyservice/ponger/Dockerfile
     environment:
       - SERVER_PORT=8080
     ports:
@@ -22,7 +22,7 @@ services:
   ponger_3:
     build:
       context: .
-      dockerfile: ./internal/servicemanager/testhelpers/dummyservice/ponger/Dockerfile
+      dockerfile: ./internal/app/testhelpers/dummyservice/ponger/Dockerfile
     environment:
       - SERVER_PORT=8080
     ports:
@@ -33,7 +33,6 @@ services:
       context: .
       dockerfile: ./cmd/balancer/Dockerfile
     environment:
-#      - CLIENT_LIMITS="vasya=60,petya=1.5"
       - CONFIG_PATH=compose.config.json
     volumes:
       - ./compose.config.json:/app/compose.config.json

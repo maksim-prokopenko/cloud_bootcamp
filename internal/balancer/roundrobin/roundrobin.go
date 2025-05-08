@@ -2,52 +2,34 @@ package roundrobin
 
 import (
 	"errors"
-	"github.com/maximmihin/cb625/internal/balancer/roundrobin/carousel"
 	"log/slog"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 
-	"github.com/maximmihin/cb625/internal/balancer/healthcheck"
+	"github.com/maximmihin/cb625/internal/balancer/roundrobin/carousel"
 )
 
-type SimpleCarousel interface {
-	Set(url string, info any)
-	Next() any
-}
-
-type roundRobin struct {
-	backendsCarousel SimpleCarousel
-	logger           *slog.Logger
+type RoundRobin struct {
+	*carousel.Carousel
+	logger *slog.Logger
 }
 
 type Config struct {
-	ServerName        string                               `json:"server_name"`
-	BackendUrls       []ServerConfig                       `json:"servers"`
-	ActiveHealthCheck *healthcheck.ActiveHealthCheckConfig `json:"active_health_check"`
-	Logger            *slog.Logger
+	BackendUrls []ServerConfig `json:"servers"`
+
+	Logger *slog.Logger `json:"-"`
 }
 
 type ServerConfig struct {
-	URL string `json:"url"`
+	URL    string `json:"url"`
+	Weight int    `json:"weight,omitempty"`
 }
 
-func New(cfg Config) (http.Handler, error) {
+func New(cfg *Config) (*RoundRobin, error) {
 
-	var err error
-
-	rr := new(roundRobin)
-	if cfg.ActiveHealthCheck == nil {
-		rr.backendsCarousel = carousel.New()
-	} else {
-		srr := carousel.NewSmart()
-		rr.backendsCarousel = srr
-		defer func() { // TODO ugly
-			if err == nil {
-				healthcheck.RunActiveHealthCheck(cfg.ActiveHealthCheck, srr)
-			}
-		}()
-	}
+	rr := new(RoundRobin)
+	rr.Carousel = carousel.New()
 
 	var errs []error
 	for _, backendUrl := range cfg.BackendUrls {
@@ -58,22 +40,17 @@ func New(cfg Config) (http.Handler, error) {
 		}
 		proxy := httputil.NewSingleHostReverseProxy(backendUrlParsed) // TODO inject logger and error handler in proxy
 
-		rr.backendsCarousel.Set(backendUrl.URL, proxy)
+		rr.Carousel.SetWithWeight(backendUrl.URL, proxy, backendUrl.Weight)
 	}
 	if len(cfg.BackendUrls) == 0 {
 		errs = append(errs, errors.New("empty backends list"))
 	}
-	err = errors.Join(errs...)
-	if err != nil {
-		return nil, err
-	}
-
-	return rr, nil
+	return rr, errors.Join(errs...)
 }
 
-func (rr *roundRobin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (rr *RoundRobin) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// TODO handle error proxy when server on another port
-	handler := rr.backendsCarousel.Next().(http.Handler)
+	handler := rr.Carousel.Next().(http.Handler) // TODO handle case, when return nil (when all server died)
 	if handler == nil {
 		rr.logger.Error("no one alive backend")
 		http.Error(w, "Service unavailable", http.StatusServiceUnavailable) // TODO not json?

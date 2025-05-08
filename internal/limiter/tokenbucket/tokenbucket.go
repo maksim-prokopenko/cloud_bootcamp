@@ -10,10 +10,28 @@ import (
 )
 
 type Config struct {
-	Next               http.Handler
-	ClientsLimits      map[string]float64
-	Logger             *slog.Logger
-	RequesterExtractor RequesterExtractor
+	NextHandler        http.Handler       `json:"-"`
+	ClientsLimits      map[string]float64 `json:"clients_limits"`
+	RequesterExtractor RequesterExtractor `json:"-"`
+	Logger             *slog.Logger       `json:"-"`
+}
+
+func (c *Config) UnmarshalJSON(bytes []byte) error {
+	var jsonConfig struct {
+		Users []struct {
+			Token string  `json:"token"`
+			Limit float64 `json:"limit"`
+		} `json:"users"`
+	}
+	err := json.Unmarshal(bytes, &jsonConfig)
+	if err != nil {
+		return err
+	}
+	c.ClientsLimits = make(map[string]float64, len(jsonConfig.Users))
+	for _, user := range jsonConfig.Users {
+		c.ClientsLimits[user.Token] = user.Limit
+	}
+	return nil
 }
 
 type TokenBuket struct {
@@ -23,14 +41,14 @@ type TokenBuket struct {
 	logger             *slog.Logger
 }
 
-func New(cfg Config) (*TokenBuket, error) {
+func New(cfg *Config) (*TokenBuket, error) {
 
 	if err := cfg.WithDefaults().Validate(); err != nil {
 		return nil, err
 	}
 
 	tb := TokenBuket{
-		nextHandler:        cfg.Next,
+		nextHandler:        cfg.NextHandler,
 		limiterMap:         newLimiterMap(len(cfg.ClientsLimits)),
 		requesterExtractor: cfg.RequesterExtractor,
 		logger:             cfg.Logger,
@@ -73,13 +91,13 @@ func (tb *TokenBuket) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 }
 
-func (c Config) WithDefaults() Config {
+func (c *Config) WithDefaults() *Config {
 	if c.Logger == nil {
 		c.Logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
 			Level: slog.LevelDebug,
 		}))
 	}
-	if c.RequesterExtractor != nil {
+	if c.RequesterExtractor == nil {
 		c.RequesterExtractor = IPPortRequesterExtractor
 	}
 	return c
@@ -87,12 +105,12 @@ func (c Config) WithDefaults() Config {
 
 var ErrUnsetHandlerAfter = errors.New("no handler specified after limiter") // TODO rename
 var ErrEmptyRequesterList = errors.New("empty requester list")
-var ErrEmptyRequestExtractor = errors.New("empty requester list")
+var ErrEmptyRequestExtractor = errors.New("empty requester extractor")
 
-func (c Config) Validate() error {
+func (c *Config) Validate() error {
 	var errs []error
 
-	if c.Next == nil {
+	if c.NextHandler == nil {
 		errs = append(errs, ErrUnsetHandlerAfter)
 	}
 	if len(c.ClientsLimits) == 0 { // TODO switch everywhere to usual != ""

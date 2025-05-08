@@ -1,12 +1,23 @@
 {
-  "services": {
-    "ponger_service": {
-      "server_name": "http://localhost:8080",
-      "algorithm": "round_robin",
-      "servers": [
-        { "url": "http://localhost:8081" },
-        { "url": "http://localhost:8082" }
-      ]
-    }
+  "balancer": {
+    "type": "round_robin",
+    "servers": [
+      { "url": "http://localhost:8081", "weight": 3 },
+      { "url": "http://localhost:8082", "weight": 2 },
+      { "url": "http://localhost:8083", "weight": 1 }
+    ]
+  },
+  "limiter": {
+    "type": "token_buket",
+    "users": [
+      { "token": "vasya", "limit":  1.5 },
+      { "token": "petya", "limit":  10 }
+    ]
+  },
+  "active_health_check": {
+    "handler": "/ping",
+    "method": "GET",
+    "interval": 10,
+    "timeout": 100
   }
 }

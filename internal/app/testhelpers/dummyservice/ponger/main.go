@@ -5,7 +5,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/maximmihin/cb625/internal/servicemanager/testhelpers/dummyservice/ponger/app"
+	"github.com/maximmihin/cb625/internal/app/testhelpers/dummyservice/ponger/app"
 )
 
 func main() {

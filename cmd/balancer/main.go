@@ -1,11 +1,12 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 	"os"
 
-	"github.com/maximmihin/cb625/internal/servicemanager"
+	"github.com/maximmihin/cb625/internal/app"
 )
 
 func main() {
@@ -14,13 +15,19 @@ func main() {
 		Level: slog.LevelDebug, // todo get from env
 	}))
 
-	cfg, err := servicemanager.ParseFromJSON(os.Getenv("CONFIG_PATH"))
+	cfg, err := app.ParseFromJSON(os.Getenv("CONFIG_PATH"))
 	if err != nil {
 		logger.Error(err.Error())
 		return
 	}
+	logger.Debug("config after parse",
+		slog.Any("config", cfg))
 
-	sm, err := servicemanager.NewServiceManager(cfg, logger)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	cfg.Logger = logger
+	sm, err := app.New(ctx, cfg)
 	if err != nil {
 		logger.Error(err.Error())
 		return

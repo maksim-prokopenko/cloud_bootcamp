@@ -5,7 +5,7 @@ WORKDIR /app
 #RUN go mod download
 
 COPY . .
-RUN go build -o ponger-server ./internal/servicemanager/testhelpers/dummyservice/ponger
+RUN go build -o ponger-server ./internal/app/testhelpers/dummyservice/ponger
 
 FROM alpine:latest
 WORKDIR /app
